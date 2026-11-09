@@ -14,6 +14,7 @@ along those corridors, not metro trains.
 | [`docs/user-journeys/`](docs/user-journeys/) | Who uses this, what each role owns, and the features that belong to them |
 | [`TECHSTACK.md`](TECHSTACK.md) | Versions, why each choice was made, project layout, known limitations |
 | [`docs/plans/`](docs/plans/) | The requirements and implementation plan this was built from |
+| [`docs/presentation/`](docs/presentation/bus-ticketing-prototype.pptx) | A 14-slide PowerPoint deck: goal, roles, how it works, tech stack, demo path |
 
 ## Running it
 
