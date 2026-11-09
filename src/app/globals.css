@@ -322,3 +322,20 @@ td.wrap { white-space: normal; }
 
 .footlinks { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 0.87rem; color: var(--ink-soft); }
 .footlinks a { margin-right: 14px; }
+
+/* ---- Crowd forecast ---- */
+.crowd {
+  display: inline-flex; align-items: center; gap: 7px; margin-top: 5px;
+  font-size: 0.78rem; font-weight: 500;
+}
+.crowd__bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+.crowd__bars i { width: 3px; background: currentColor; border-radius: 1px; opacity: .25; }
+.crowd__bars i:nth-child(1) { height: 5px; }
+.crowd__bars i:nth-child(2) { height: 8px; }
+.crowd__bars i:nth-child(3) { height: 12px; }
+.crowd--quiet { color: var(--pass); }
+.crowd--quiet .crowd__bars i:nth-child(1) { opacity: 1; }
+.crowd--seats { color: var(--unknown); }
+.crowd--seats .crowd__bars i:nth-child(-n+2) { opacity: 1; }
+.crowd--full { color: var(--fail); }
+.crowd--full .crowd__bars i { opacity: 1; }

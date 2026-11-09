@@ -31,6 +31,8 @@ export async function searchTrips(originStopId: string, destinationStopId: strin
     })
     .map((trip) => ({
       id: trip.id,
+      scheduleId: trip.scheduleId,
+      departureDate: trip.departureDate,
       routeName: trip.schedule.route.name,
       departureTime: trip.departureTime,
       fareMinor: trip.schedule.route.fareMinor,

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { searchTrips } from "@/lib/trips/search";
 import { calendarDay } from "@/lib/trips/date";
+import { forecastTrips, CROWD_COPY } from "@/lib/crowd/estimate";
 import Mast from "@/components/Mast";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,9 @@ export default async function Home({
 
   const results =
     from && to && date ? await searchTrips(from, to, calendarDay(date)) : null;
+
+  // Crowd forecast from past validated boardings on the same service and weekday
+  const crowd = results ? await forecastTrips(results) : {};
 
   return (
     <main className="shell">
@@ -71,6 +75,16 @@ export default async function Home({
                     <div className="trip__meta">
                       ₹{(t.fareMinor / 100).toFixed(0)} · {t.seatsAvailable} of {t.seatsTotal} seats free
                     </div>
+                    {crowd[t.id] && (
+                      <div className={`crowd crowd--${crowd[t.id].level}`}>
+                        <span className="crowd__bars" aria-hidden="true">
+                          <i /><i /><i />
+                        </span>
+                        <span>
+                          {CROWD_COPY[crowd[t.id].level]} · about {crowd[t.id].expectedPct}% full
+                        </span>
+                      </div>
+                    )}
                   </div>
                   {t.seatsAvailable > 0 ? (
                     <Link className="btn" href={`/trips/${t.id}`}>Choose seat</Link>
