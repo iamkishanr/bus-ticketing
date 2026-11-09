@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bus
+      POSTGRES_PASSWORD: bus
+      POSTGRES_DB: bus_ticketing
+    ports:
+      - "5433:5432"
+    volumes:
+      - bus_pgdata:/var/lib/postgresql/data
+volumes:
+  bus_pgdata:

@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SeatStatus {
+  available
+  held
+  booked
+}
+
+enum TicketStatus {
+  issued
+  used
+  cancelled
+}
+
+enum TicketEventType {
+  held
+  paid
+  issued
+  validated
+  cancelled
+  expired
+}
+
+model Stop {
+  id         String      @id @default(uuid())
+  name       String      @unique
+  routeStops RouteStop[]
+
+  @@map("stops")
+}
+
+model Route {
+  id         String      @id @default(uuid())
+  name       String
+  fareMinor  Int         @map("fare_minor")
+  routeStops RouteStop[]
+  schedules  Schedule[]
+
+  @@map("routes")
+}
+
+model RouteStop {
+  id       String @id @default(uuid())
+  routeId  String @map("route_id")
+  stopId   String @map("stop_id")
+  position Int
+  route    Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stop     Stop   @relation(fields: [stopId], references: [id], onDelete: Cascade)
+
+  @@unique([routeId, position])
+  @@unique([routeId, stopId])
+  @@map("route_stops")
+}
+
+model Bus {
+  id        String     @id @default(uuid())
+  label     String
+  rows      Int
+  columns   String[]
+  schedules Schedule[]
+
+  @@map("buses")
+}
+
+model Schedule {
+  id            String @id @default(uuid())
+  routeId       String @map("route_id")
+  busId         String @map("bus_id")
+  departureTime String @map("departure_time")
+  weekdays      Int[]
+  route         Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  bus           Bus    @relation(fields: [busId], references: [id], onDelete: Cascade)
+  trips         Trip[]
+
+  @@map("schedules")
+}
+
+model Trip {
+  id            String          @id @default(uuid())
+  scheduleId    String          @map("schedule_id")
+  departureDate DateTime        @map("departure_date") @db.Date
+  departureTime String          @map("departure_time")
+  schedule      Schedule        @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  seats         SeatInventory[]
+  bookings      Booking[]
+  tickets       Ticket[]
+  events        TicketEvent[]
+
+  @@unique([scheduleId, departureDate])
+  @@map("trips")
+}
+
+model SeatInventory {
+  id            String     @id @default(uuid())
+  tripId        String     @map("trip_id")
+  seatLabel     String     @map("seat_label")
+  status        SeatStatus @default(available)
+  holdToken     String?    @map("hold_token")
+  holdExpiresAt DateTime?  @map("hold_expires_at")
+  trip          Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, seatLabel])
+  @@index([tripId, status])
+  @@map("seat_inventory")
+}
+
+model Booking {
+  id                  String   @id @default(uuid())
+  reference           String   @unique
+  tripId              String   @map("trip_id")
+  seatLabel           String   @map("seat_label")
+  passengerName       String   @map("passenger_name")
+  originStopId        String   @map("origin_stop_id")
+  destinationStopId   String   @map("destination_stop_id")
+  fareMinor           Int      @map("fare_minor")
+  paymentProviderRef  String   @map("payment_provider_ref")
+  createdAt           DateTime @default(now()) @map("created_at")
+  trip                Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  ticket              Ticket?
+
+  @@map("bookings")
+}
+
+model Ticket {
+  id          String       @id @default(uuid())
+  bookingId   String       @unique @map("booking_id")
+  tripId      String       @map("trip_id")
+  status      TicketStatus @default(issued)
+  validatedAt DateTime?    @map("validated_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  booking     Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  trip        Trip         @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@map("tickets")
+}
+
+model TicketEvent {
+  id                  String          @id @default(uuid())
+  ticketId            String?         @map("ticket_id")
+  tripId              String          @map("trip_id")
+  seatLabel           String          @map("seat_label")
+  originStopId        String?         @map("origin_stop_id")
+  destinationStopId   String?         @map("destination_stop_id")
+  eventType           TicketEventType @map("event_type")
+  occurredAt          DateTime        @default(now()) @map("occurred_at")
+  trip                Trip            @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId, eventType])
+  @@map("ticket_events")
+}
