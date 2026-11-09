@@ -5,6 +5,7 @@ import { signInAction } from "@/app/actions";
 import { generateTripsAction, resetDemoAction } from "./actions";
 import { formatTripDate, todayCalendarDay } from "@/lib/trips/date";
 import Mast from "@/components/Mast";
+import AdminNav from "@/components/AdminNav";
 
 export const dynamic = "force-dynamic";
 
@@ -42,16 +43,9 @@ export default async function AdminPage({ searchParams }: { searchParams: { err?
   return (
     <main className="shell shell--wide">
       <Mast label="Operator" />
+      <AdminNav current="services" />
       <h1>Services and trips</h1>
       <p className="lede">Define what runs, generate dated trips, and reset the demo.</p>
-
-      <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-        <div>
-          <strong>Monitor occupancy</strong>
-          <div className="muted">How full every service runs, by day of week, from boarding scans.</div>
-        </div>
-        <Link className="btn" href="/admin/overview">Open monitor</Link>
-      </div>
 
       {searchParams.done === "reset" && <div className="notice notice--info">Demo data reset. Every trip is empty again.</div>}
       {searchParams.done && searchParams.done !== "reset" && (
@@ -115,11 +109,6 @@ export default async function AdminPage({ searchParams }: { searchParams: { err?
         <button className="btn btn--danger" type="submit">Reset demo data</button>
       </form>
 
-      <div className="footlinks">
-        <Link href="/admin/overview">Monitor occupancy</Link>
-        <Link href="/">Passenger site</Link>
-        <Link href="/scan">Conductor scanner</Link>
-      </div>
     </main>
   );
 }

@@ -4,6 +4,7 @@ import { tripManifest } from "@/lib/trips/manifest";
 import { hasRole } from "@/lib/auth";
 import { formatTripDate } from "@/lib/trips/date";
 import Mast from "@/components/Mast";
+import AdminNav from "@/components/AdminNav";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export default async function ManifestPage({ params }: { params: { tripId: strin
   return (
     <main className="shell shell--wide">
       <Mast label="Trip manifest" />
+      <AdminNav current="services" />
       <h1>{m.trip.schedule.route.name}</h1>
       <p className="lede">
         {formatTripDate(m.trip.departureDate, { weekday: "long", day: "numeric", month: "long" })} at {m.trip.departureTime}
@@ -47,8 +49,7 @@ export default async function ManifestPage({ params }: { params: { tripId: strin
       </div>
 
       <div className="footlinks">
-        <Link href="/admin">Back to operator</Link>
-        <Link href="/admin/overview">Monitor occupancy</Link>
+        <Link href="/admin">All services and trips</Link>
       </div>
     </main>
   );

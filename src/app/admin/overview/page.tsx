@@ -2,8 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { hasRole } from "@/lib/auth";
 import Mast from "@/components/Mast";
+import AdminNav from "@/components/AdminNav";
 import { serviceOverview, totals, topSegments } from "@/lib/crowd/overview";
-import { CROWD_COPY } from "@/lib/crowd/estimate";
+import { CROWD_COPY, crowdLevel } from "@/lib/crowd/estimate";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +21,12 @@ export default async function OverviewPage() {
     return (
       <main className="shell shell--wide">
         <Mast label="Monitor" />
+        <AdminNav current="monitor" />
         <h1>Nothing to monitor yet</h1>
         <p className="lede">
           Occupancy appears here once passengers start boarding. Every validated scan
           feeds this page — no separate tracking is needed.
         </p>
-        <div className="footlinks">
-          <Link href="/admin">Back to operator</Link>
-        </div>
       </main>
     );
   }
@@ -35,6 +34,7 @@ export default async function OverviewPage() {
   return (
     <main className="shell shell--wide">
       <Mast label="Monitor" />
+      <AdminNav current="monitor" />
       <h1>How full are the buses?</h1>
       <p className="lede">
         Every figure here is counted from validated boarding scans — the same scans the
@@ -64,6 +64,12 @@ export default async function OverviewPage() {
 
       <h2>Occupancy by service</h2>
       <div className="card">
+        <div className="heatkey">
+          <span><i className="heatkey__box heatkey__box--quiet" /> Quiet</span>
+          <span><i className="heatkey__box heatkey__box--seats" /> Seats usually free</span>
+          <span><i className="heatkey__box heatkey__box--full" /> Usually busy</span>
+          <span className="muted">Peak is the fullest single trip recorded.</span>
+        </div>
         <div className="scroller">
           <table>
             <thead>
@@ -106,8 +112,15 @@ export default async function OverviewPage() {
       <h2>Load by day of week</h2>
       <div className="card">
         <p className="muted" style={{ marginTop: 0 }}>
-          Average occupancy per service. Darker means fuller.
+          Average occupancy per service, as a percentage of seats. Same bands the
+          passenger site uses.
         </p>
+        <div className="heatkey">
+          <span><i className="heatkey__box heatkey__box--quiet" /> Under 40% — quiet</span>
+          <span><i className="heatkey__box heatkey__box--seats" /> 40–79% — seats usually free</span>
+          <span><i className="heatkey__box heatkey__box--full" /> 80% and over — usually busy</span>
+          <span><i className="heatkey__box heatkey__box--none" /> Does not run</span>
+        </div>
         <div className="scroller">
           <table className="heat">
             <thead>
@@ -129,12 +142,10 @@ export default async function OverviewPage() {
                         <span className="heat__none" title="Does not run">·</span>
                       ) : (
                         <span
-                          className="heat__box mono"
-                          style={{ background: `color-mix(in srgb, var(--accent) ${Math.max(8, w.pct)}%, var(--surface))`,
-                                   color: w.pct > 55 ? "#fff" : "var(--ink)" }}
-                          title={`${w.pct}% full`}
+                          className={`heat__box heat__box--${crowdLevel(w.pct)} mono`}
+                          title={`${w.pct}% of seats taken on average`}
                         >
-                          {w.pct}
+                          {w.pct}%
                         </span>
                       )}
                     </td>
@@ -172,10 +183,6 @@ export default async function OverviewPage() {
         </>
       )}
 
-      <div className="footlinks">
-        <Link href="/admin">Services and trips</Link>
-        <Link href="/">Passenger site</Link>
-      </div>
     </main>
   );
 }

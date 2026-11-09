@@ -35,6 +35,7 @@ npm run dev                          # http://localhost:3000
 - `/find` — retrieve a booking by its reference
 - `/scan` — conductor scanner (passcode required, pick a service, then scan)
 - `/admin` — routes, schedules, trip generation, manifests, demo reset
+- `/admin/network` — add or remove routes, services, stops and buses
 - `/admin/overview` — occupancy monitor: load per service, day-of-week heatmap, busiest segments
 
 ## Demoing the edge cases
@@ -67,6 +68,21 @@ Distinct connections matter: a single pooled client serializes requests, and the
 gate would pass without proving anything.
 
 Everything else is verified by using the app, per `docs/plans/`.
+
+## Removing a route safely
+
+Every foreign key is `ON DELETE CASCADE`, so a naive delete would destroy
+schedules, trips, bookings, tickets **and the append-only event log**. The
+operator is therefore shown the exact impact first and offered two paths:
+
+- **Retire** — removes future trips that carry neither bookings nor events and
+  stops the service generating new ones. Past trips, tickets and occupancy
+  history survive, so the monitor keeps reporting them.
+- **Delete permanently** — allowed only when the route carries no ticket or
+  boarding history at all, and gated behind typing `DELETE`.
+
+Removing one service behaves the same way: unbooked future trips go, anything
+with history stays and the service simply stops running.
 
 ## How it works
 
