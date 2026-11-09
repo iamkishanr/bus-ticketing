@@ -52,3 +52,47 @@ export async function getTripWithSeats(tripId: string) {
     },
   });
 }
+
+/**
+ * Services departing today, for the landing page. A passenger who has not
+ * searched yet sees real, bookable departures rather than an empty form.
+ */
+export async function todaysServices(limit = 10) {
+  const day = calendarDay(new Date());
+  const trips = await prisma.trip.findMany({
+    where: { departureDate: day },
+    include: {
+      schedule: {
+        include: {
+          route: { include: { routeStops: { include: { stop: true }, orderBy: { position: "asc" } } } },
+          bus: true,
+        },
+      },
+      seats: true,
+    },
+    orderBy: { departureTime: "asc" },
+    take: limit,
+  });
+
+  const now = new Date();
+  return trips.map((trip) => {
+    const stops = trip.schedule.route.routeStops;
+    return {
+      id: trip.id,
+      scheduleId: trip.scheduleId,
+      departureDate: trip.departureDate,
+      routeName: trip.schedule.route.name,
+      departureTime: trip.departureTime,
+      fareMinor: trip.schedule.route.fareMinor,
+      originStopId: stops[0]?.stopId ?? "",
+      destinationStopId: stops[stops.length - 1]?.stopId ?? "",
+      originName: stops[0]?.stop.name ?? "",
+      destinationName: stops[stops.length - 1]?.stop.name ?? "",
+      stopCount: stops.length,
+      seatsAvailable: trip.seats.filter(
+        (s) => s.status === "available" || (s.status === "held" && s.holdExpiresAt !== null && s.holdExpiresAt < now),
+      ).length,
+      seatsTotal: trip.seats.length,
+    };
+  });
+}

@@ -15,7 +15,7 @@ cp .env.example .env                 # then fill TICKET_TOKEN_SECRET
 openssl rand -hex 32                 # generate that secret
 npx prisma db push                   # create tables
 docker compose exec -T db psql -U bus -d bus_ticketing < prisma/sql/immutable_events.sql
-npm run db:seed                      # 3 routes, 24 stops, 2 weeks of trips
+npm run db:seed                      # 6 routes, 12 services, 32 stops, 2 weeks of trips
 npm run dev                          # http://localhost:3000
 ```
 
@@ -29,9 +29,29 @@ npm run dev                          # http://localhost:3000
 | `CONDUCTOR_PASSCODE` | Scanner (`/scan`). Demo default: `conductor-demo` |
 | `HOLD_DURATION_MINUTES` | Seat hold length, default 10. **Set to 1 to demo hold expiry.** |
 
+## What a fresh install contains
+
+`npm run db:seed` creates a browsable network so the app is useful immediately:
+
+| | |
+|---|---|
+| Stops | 32 Bangalore localities |
+| Buses | 5, from 20 to 40 seats |
+| Routes | 6 corridors (Whitefield, Tumkur Road, Hosur Road, Airport, Outer Ring, South) |
+| Services | 12, from 05:30 to 21:30 |
+| Trips | ~148, starting **today** through 14 days ahead |
+| Bookings / boarding history | none — every seat is free |
+
+The landing page lists today's departures without searching, so a demo needs no
+setup. Crowd forecasts and the operator monitor stay empty until passengers
+start boarding — they are computed from real scans, never seeded.
+
+Re-running the seed is safe: it extends the trip window rather than duplicating
+routes.
+
 ## The four surfaces
 
-- `/` — search services, pick a seat, pay, get a QR
+- `/` — today's departures listed by default; search by stop and date; pick a seat, pay, get a QR
 - `/find` — retrieve a booking by its reference
 - `/scan` — conductor scanner (passcode required, pick a service, then scan)
 - `/admin` — routes, schedules, trip generation, manifests, demo reset
