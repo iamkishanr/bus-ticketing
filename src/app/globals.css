@@ -313,7 +313,10 @@ td.wrap { white-space: normal; }
   display: flex; align-items: center; justify-content: center;
   border: 3px solid rgba(255,255,255,.55); border-radius: 50%; margin-bottom: 20px;
 }
-.verdict__word { font-family: var(--display); font-size: clamp(2rem, 9vw, 2.9rem); font-weight: 700; letter-spacing: 0.03em; margin: 0 0 6px; }
+.verdict__word {
+  font-family: var(--display); font-size: clamp(2rem, 9vw, 2.9rem); font-weight: 700;
+  letter-spacing: 0.03em; margin: 0 0 6px; color: #fff; text-transform: none;
+}
 .verdict__detail { font-size: 1.02rem; opacity: .95; max-width: 30ch; }
 .verdict__seat { font-family: var(--mono); font-size: 1.5rem; font-weight: 700; margin-top: 4px; }
 
