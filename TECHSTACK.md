@@ -63,11 +63,11 @@ changing. No real money, no card data, no PCI surface.
 ```
 prisma/
   schema.prisma          10 models, enums, unique constraints
-  seed.ts                24 stops, 3 routes, 4 services, 14 days of trips
+  seed.ts                32 stops, 6 routes, 12 services, 14 days of trips
   sql/immutable_events.sql   append-only trigger on ticket_events
 
 src/app/
-  page.tsx               passenger search + crowd forecast
+  page.tsx               today's departures, search, crowd forecast
   trips/[tripId]/        seat map and hold acquisition
   book/[holdId]/         passenger details and simulated payment
   booking/[ref]/         the ticket (QR) and cancellation
@@ -91,6 +91,7 @@ src/lib/
   crowd/overview.ts      operator aggregates and segment analysis
   admin/manage.ts        create/retire/delete with impact analysis
   trips/date.ts          calendar-day handling (timezone-safe)
+  trips/reachable.ts     which stops are served onward from an origin
   auth.ts                role passcodes with attempt limiting
 
 src/components/

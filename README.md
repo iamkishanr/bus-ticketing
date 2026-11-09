@@ -7,6 +7,14 @@ scanner in a phone browser and validates it once at the door.
 Stops are named after well-known Bangalore localities. These are bus services
 along those corridors, not metro trains.
 
+## Documentation
+
+| Document | Read it for |
+|---|---|
+| [`docs/user-journeys/`](docs/user-journeys/) | Who uses this, what each role owns, and the features that belong to them |
+| [`TECHSTACK.md`](TECHSTACK.md) | Versions, why each choice was made, project layout, known limitations |
+| [`docs/plans/`](docs/plans/) | The requirements and implementation plan this was built from |
+
 ## Running it
 
 ```bash
@@ -49,14 +57,35 @@ start boarding — they are computed from real scans, never seeded.
 Re-running the seed is safe: it extends the trip window rather than duplicating
 routes.
 
-## The four surfaces
+## Screens, by who uses them
 
-- `/` — today's departures listed by default; search by stop and date; pick a seat, pay, get a QR
-- `/find` — retrieve a booking by its reference
-- `/scan` — conductor scanner (passcode required, pick a service, then scan)
-- `/admin` — routes, schedules, trip generation, manifests, demo reset
-- `/admin/network` — add or remove routes, services, stops and buses
-- `/admin/overview` — occupancy monitor: load per service, day-of-week heatmap, busiest segments
+**Passenger** — no sign-in
+
+| Path | What it does |
+|---|---|
+| `/` | Today's departures listed by default; search by stop and date |
+| `/trips/[tripId]` | Seat map, pick one seat |
+| `/book/[holdId]` | Passenger details and simulated payment |
+| `/booking/[ref]` | The QR ticket, and cancellation |
+| `/find` | Retrieve a booking by its reference |
+
+**Conductor** — `CONDUCTOR_PASSCODE`
+
+| Path | What it does |
+|---|---|
+| `/scan` | Pick today's service, then scan QR codes |
+
+**Operator** — `ADMIN_PASSCODE`
+
+| Path | What it does |
+|---|---|
+| `/admin` | Services, trip generation, demo reset |
+| `/admin/network` | Add or remove routes, services, stops, buses |
+| `/admin/overview` | Occupancy monitor: load per service, day-of-week heatmap, busiest segments |
+| `/admin/trips/[tripId]` | Per-trip manifest |
+
+Each role's responsibilities and features are written up in
+[`docs/user-journeys/`](docs/user-journeys/).
 
 ## Demoing the edge cases
 

@@ -59,6 +59,10 @@ stops, zero fares, and a bus already committed at the same time.
 **Trip generation** turns a service into dated, bookable trips — 30 days at a
 time, idempotent, so re-running extends the window rather than duplicating.
 
+A service only becomes bookable once its trips exist. Adding a route and a
+service is not enough on its own; generate trips from **Services & trips**
+afterwards. The confirmation after adding a service says so.
+
 ### Monitoring
 
 **Headline figures** — passengers boarded, trips run, average occupancy,
@@ -111,5 +115,7 @@ keeping routes and schedules. Behind a typed `RESET` confirmation.
 - **No per-conductor view.** The system does not record which conductor scanned
   what, so there is no accountability trail.
 - **No export.** Figures are on screen only; no CSV or report.
+- **Adding a service is a two-step job** — create it under Routes & stops, then
+  generate trips under Services & trips. Easy to forget the second step.
 - **Occupancy counts ticketed passengers only.** Where a cash fallback exists in
   a real deployment, the numbers are a floor rather than a total.

@@ -9,7 +9,7 @@ passcode.
 
 | Role | Entry point | Signs in? | Responsible for |
 |---|---|---|---|
-| [Passenger](./passenger.md) | `/` | No | Choosing a seat, paying, carrying the QR, boarding |
+| [Passenger](./passenger.md) | `/` | No | Choosing a journey and seat, paying, carrying the QR, boarding |
 | [Conductor](./conductor.md) | `/scan` | Yes — conductor passcode | Admitting the right people, once each |
 | [Operator](./operator.md) | `/admin` | Yes — admin passcode | What runs, how often, and how full it is |
 | Payment provider | — | — | Accepting or declining a charge (simulated) |
@@ -49,4 +49,13 @@ journey everything else exists to serve. Then
 Then [`operator.md`](./operator.md).
 
 For the build itself, see [`TECHSTACK.md`](../../TECHSTACK.md) and the plan in
-[`docs/plans/`](../plans/).
+[`docs/plans/`](../plans/). For setup and demo instructions, see the
+[`README`](../../README.md).
+
+## What a demo starts with
+
+A fresh install seeds 6 routes, 12 services, 5 buses and 32 stops, with trips
+from today through two weeks ahead and no bookings. So the passenger journey is
+demoable immediately, while the operator's occupancy monitor and the passenger's
+crowd forecast stay empty until conductors start scanning — those are computed
+from real boardings and are never seeded.

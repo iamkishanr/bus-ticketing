@@ -37,7 +37,9 @@ flowchart TD
 
 ## Features that belong to the conductor
 
-**Service selection.** The conductor chooses their own service at scanner start;
+**Service selection.** The list shows only services with a trip **today**, so a
+conductor cannot accidentally scan against a service that is not running. The
+conductor chooses their own service at scanner start;
 nothing assigns it. The choice is held in the session and shown persistently in
 the header — deliberately, because a wrong selection rejects every valid ticket,
 and the header is how they notice before a queue forms.
