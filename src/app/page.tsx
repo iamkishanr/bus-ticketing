@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { searchTrips } from "@/lib/trips/search";
 import { calendarDay } from "@/lib/trips/date";
+import Mast from "@/components/Mast";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +24,7 @@ export default async function Home({
 
   return (
     <main className="shell">
-      <div className="mast">
-        <span className="mast__mark">City Bus Service</span>
-        <span className="mast__rule" />
-      </div>
+      <Mast />
 
       <h1>Where are you travelling?</h1>
       <p className="lede">Reserve a numbered seat, pay, and board with a QR ticket.</p>

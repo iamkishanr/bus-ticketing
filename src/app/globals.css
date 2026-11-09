@@ -77,12 +77,19 @@ a { color: var(--accent); text-underline-offset: 3px; }
 .shell--wide { max-width: 1000px; }
 
 /* ---- Masthead: route-board lettering ---- */
-.mast { display: flex; align-items: baseline; gap: 10px; margin-bottom: 28px; }
+.mast { display: flex; align-items: baseline; gap: 9px; margin-bottom: 28px; flex-wrap: wrap; }
+.mast__home,
 .mast__mark {
   font-family: var(--display); font-weight: 700; font-size: 1.05rem;
-  letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent);
+  letter-spacing: 0.14em; text-transform: uppercase;
 }
-.mast__rule { flex: 1; height: 1px; background: var(--rule-firm); }
+.mast__home { color: var(--accent); text-decoration: none; }
+.mast__home:hover { text-decoration: underline; text-underline-offset: 4px; }
+.mast__home:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+.mast__home--static { color: var(--accent); }
+.mast__sep { color: var(--rule-firm); font-weight: 400; }
+.mast__mark { color: var(--ink-soft); }
+.mast__rule { flex: 1; min-width: 20px; height: 1px; background: var(--rule-firm); }
 
 h1 {
   font-family: var(--display);

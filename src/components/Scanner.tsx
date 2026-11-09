@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { validateTicketAction } from "@/app/actions";
+import Mast from "./Mast";
 
 type Trip = { id: string; label: string };
 type Verdict =
@@ -56,10 +57,7 @@ export default function Scanner({ trips }: { trips: Trip[] }) {
   if (!tripId) {
     return (
       <main className="shell">
-        <div className="mast">
-          <span className="mast__mark">Conductor</span>
-          <span className="mast__rule" />
-        </div>
+        <Mast label="Conductor" />
         <h1>Which service are you on?</h1>
         <p className="lede">Tickets issued for any other service will be refused at the door.</p>
         <div className="card stack">
@@ -82,7 +80,7 @@ export default function Scanner({ trips }: { trips: Trip[] }) {
       <div className="scanhead">
         <span className="scanhead__svc">{current?.label}</span>
         <button className="btn btn--quiet" onClick={() => { setTripId(null); setVerdict(null); busy.current = false; }}>
-          Change trip
+          Change service
         </button>
       </div>
 

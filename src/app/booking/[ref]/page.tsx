@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import { getBookingByReference } from "@/lib/bookings/confirm";
 import { cancelBookingAction } from "@/app/actions";
 import { formatTripDate } from "@/lib/trips/date";
+import Mast from "@/components/Mast";
 
 export const dynamic = "force-dynamic";
 
@@ -25,10 +26,7 @@ export default async function BookingPage({
 
   return (
     <main className="shell">
-      <div className="mast">
-        <span className="mast__mark">Boarding pass</span>
-        <span className="mast__rule" />
-      </div>
+      <Mast label="Boarding pass" />
 
       {searchParams.err === "already_used" && (
         <div className="notice notice--error" role="alert">
@@ -109,6 +107,7 @@ export default async function BookingPage({
 
       <div className="footlinks">
         <Link href="/">Book another trip</Link>
+        <Link href="/find">Find a booking</Link>
       </div>
     </main>
   );

@@ -4,6 +4,7 @@ import { hasRole } from "@/lib/auth";
 import { signInAction } from "@/app/actions";
 import { generateTripsAction, resetDemoAction } from "./actions";
 import { formatTripDate, todayCalendarDay } from "@/lib/trips/date";
+import Mast from "@/components/Mast";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ export default async function AdminPage({ searchParams }: { searchParams: { err?
   if (!hasRole("admin")) {
     return (
       <main className="shell">
+        <Mast label="Operator" />
         <h1>Operator sign in</h1>
         {searchParams.err === "passcode" && <div className="notice notice--error">Wrong passcode.</div>}
         {searchParams.err === "throttled" && <div className="notice notice--error">Too many attempts. Wait 15 minutes.</div>}
@@ -39,10 +41,7 @@ export default async function AdminPage({ searchParams }: { searchParams: { err?
 
   return (
     <main className="shell shell--wide">
-      <div className="mast">
-        <span className="mast__mark">Operator</span>
-        <span className="mast__rule" />
-      </div>
+      <Mast label="Operator" />
       <h1>Services and trips</h1>
       <p className="lede">Define what runs, generate dated trips, and reset the demo.</p>
 
@@ -107,6 +106,11 @@ export default async function AdminPage({ searchParams }: { searchParams: { err?
         </div>
         <button className="btn btn--danger" type="submit">Reset demo data</button>
       </form>
+
+      <div className="footlinks">
+        <Link href="/">Passenger site</Link>
+        <Link href="/scan">Conductor scanner</Link>
+      </div>
     </main>
   );
 }

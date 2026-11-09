@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Mast from "@/components/Mast";
 
 async function findAction(formData: FormData) {
   "use server";
@@ -11,10 +12,7 @@ async function findAction(formData: FormData) {
 export default function FindPage() {
   return (
     <main className="shell">
-      <div className="mast">
-        <span className="mast__mark">Find my booking</span>
-        <span className="mast__rule" />
-      </div>
+      <Mast label="Find my booking" />
       <h1>Got your reference?</h1>
       <p className="lede">Enter the 10-character code from your ticket to bring it back up.</p>
       <form className="card" action={findAction}>

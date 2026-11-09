@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getTripWithSeats } from "@/lib/trips/search";
 import { holdSeatAction } from "@/app/actions";
 import { formatTripDate } from "@/lib/trips/date";
+import Mast from "@/components/Mast";
 
 export const dynamic = "force-dynamic";
 
@@ -32,10 +33,7 @@ export default async function TripPage({
 
   return (
     <main className="shell">
-      <div className="mast">
-        <span className="mast__mark">Choose your seat</span>
-        <span className="mast__rule" />
-      </div>
+      <Mast label="Choose your seat" />
       <h1>{trip.schedule.route.name}</h1>
       <p className="lede">
         {formatTripDate(trip.departureDate, { weekday: "long", day: "numeric", month: "long" })} at{" "}
@@ -91,6 +89,7 @@ export default async function TripPage({
 
       <div className="footlinks">
         <Link href="/">Back to search</Link>
+        <Link href="/find">Find my booking</Link>
       </div>
     </main>
   );

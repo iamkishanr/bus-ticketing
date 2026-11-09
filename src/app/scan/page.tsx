@@ -3,6 +3,7 @@ import { hasRole } from "@/lib/auth";
 import { signInAction } from "@/app/actions";
 import Scanner from "@/components/Scanner";
 import { todayCalendarDay } from "@/lib/trips/date";
+import Mast from "@/components/Mast";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export default async function ScanPage({ searchParams }: { searchParams: { err?:
   if (!hasRole("conductor")) {
     return (
       <main className="shell">
+        <Mast label="Conductor" />
         <h1>Conductor sign in</h1>
         <p className="lede">Enter the conductor passcode to open the scanner.</p>
         {searchParams.err === "passcode" && <div className="notice notice--error">Wrong passcode.</div>}

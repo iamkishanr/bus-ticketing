@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { confirmBookingAction } from "@/app/actions";
 import Countdown from "@/components/Countdown";
 import { formatTripDate } from "@/lib/trips/date";
+import Mast from "@/components/Mast";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,7 @@ export default async function BookPage({
   if (!live) {
     return (
       <main className="shell">
+        <Mast label="Hold expired" />
         <div className="card">
           <h1>Seat {seatLabel} was released</h1>
           <p className="lede">Your hold ran out and the seat went back into the pool. Nothing was charged.</p>
@@ -61,10 +63,7 @@ export default async function BookPage({
     <main className="shell">
       <Countdown expiresAt={seat.holdExpiresAt!.toISOString()} seatLabel={seatLabel} tripId={tripId} />
 
-      <div className="mast">
-        <span className="mast__mark">Passenger details</span>
-        <span className="mast__rule" />
-      </div>
+      <Mast label="Passenger details" />
       <h1>Seat {seatLabel}</h1>
       <p className="lede">
         {route.name} · {formatTripDate(seat.trip.departureDate, { day: "numeric", month: "long" })} at {seat.trip.departureTime}
@@ -111,6 +110,11 @@ export default async function BookPage({
 
         <button className="btn btn--wide" type="submit">Pay ₹{(route.fareMinor / 100).toFixed(0)} and get my ticket</button>
       </form>
+
+      <div className="footlinks">
+        <Link href={`/trips/${tripId}`}>Pick a different seat</Link>
+        <Link href="/">Start over</Link>
+      </div>
     </main>
   );
 }
