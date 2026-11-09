@@ -8,7 +8,7 @@ type Trip = { id: string; label: string };
 type Verdict =
   | { state: "pass"; seatLabel: string; passengerName: string }
   | { state: "fail"; reason: string; detail?: string }
-  | { state: "unknown" };
+  | { state: "unknown"; detail?: string };
 
 export default function Scanner({ trips }: { trips: Trip[] }) {
   const [tripId, setTripId] = useState<string | null>(null);
@@ -18,7 +18,7 @@ export default function Scanner({ trips }: { trips: Trip[] }) {
   const scannerRef = useRef<{ clear: () => Promise<void> } | null>(null);
 
   useEffect(() => {
-    if (!tripId || verdict) return;
+    if (!tripId) return;
     let cancelled = false;
 
     (async () => {
@@ -30,15 +30,19 @@ export default function Scanner({ trips }: { trips: Trip[] }) {
 
       scanner.render(
         async (text: string) => {
-          // Pause on the first decode so repeated frames of the same QR
-          // cannot turn one physical scan into pass-then-already-used.
+          // Ignore repeat decodes of the same frame while one is in flight, so
+          // a single physical scan cannot become pass-then-already-used.
           if (busy.current) return;
           busy.current = true;
           try {
             const result = await validateTicketAction(text, tripId);
-            if (!cancelled) setVerdict(result);
-          } catch {
-            if (!cancelled) setVerdict({ state: "unknown" });
+            setVerdict(result);
+          } catch (err) {
+            // The ticket may well have been consumed server-side before this
+            // threw, so say the outcome is unknown rather than implying a
+            // clean failure. The reason is surfaced for diagnosis.
+            console.error("[scanner] validation call failed", err);
+            setVerdict({ state: "unknown", detail: String(err) });
           }
         },
         () => { /* per-frame decode misses are normal */ },
@@ -52,7 +56,7 @@ export default function Scanner({ trips }: { trips: Trip[] }) {
       scannerRef.current?.clear().catch(() => {});
       scannerRef.current = null;
     };
-  }, [tripId, verdict]);
+  }, [tripId]);
 
   if (!tripId) {
     return (
