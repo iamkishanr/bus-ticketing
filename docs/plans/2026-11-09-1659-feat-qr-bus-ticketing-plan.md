@@ -242,6 +242,8 @@ Scope Boundaries below is the authority for what this plan excludes.
 
 - KTD10. **Booking operations are plain server functions; UI code holds no booking logic.** `holdSeat`, `confirmBooking`, `cancelBooking`, `validateTicket`, and `getTicketByReference` take plain arguments, validate them, and return plain results, with Server Actions as thin wrappers. The reason is testability and layering: the concurrency gates in U5 and U8 call these functions directly, and Server Actions are publicly reachable POST endpoints that must validate their own arguments rather than trust a caller. A future messaging channel reuses the same boundary, which is a benefit rather than the justification. Governs R5, R8, R14, R19.
 
+- KTD11. **One minimal light theme: generous whitespace, a single accent, system font stack.** Plain CSS with custom properties, no component library. The accent marks primary actions and the selected seat; everything else is neutral with subtle borders rather than shadows. The scanner verdict is the one place that breaks the palette, using full-bleed green, red, and amber. (session-settled: user-directed — chosen over Tailwind defaults and a dark theme: the passenger flow and admin tables read easier light, and a hand-rolled minimal sheet avoids a build-step dependency for a prototype.) Governs R5, R13.
+
 ### High-Level Technical Design
 
 ```mermaid
@@ -332,7 +334,7 @@ U1 → U2 → U3 establish schema and catalog administration. U4 generates trips
 - **Requirements:** Enables all.
 - **Files:** `package.json`, `next.config.ts`, `tsconfig.json`, `prisma/schema.prisma`, `.env.example`, `docker-compose.yml`, `src/lib/db.ts`
 - **Approach:** Scaffold with `create-next-app` (App Router, TypeScript). Add Prisma and a Postgres service in `docker-compose.yml`. Export a singleton Prisma client from `src/lib/db.ts` guarded against hot-reload duplication. `.env.example` names `DATABASE_URL`, `TICKET_TOKEN_SECRET`, `ADMIN_PASSCODE`, and `CONDUCTOR_PASSCODE`.
-- **Test Scenarios:** App boots and serves a placeholder route; `prisma migrate dev` applies cleanly against the compose database; the client singleton does not open a second pool on reload.
+- **Manual checks:** App boots and serves a placeholder route; `prisma migrate dev` applies cleanly against the compose database; the client singleton does not open a second pool on reload.
 - **Verification:** `npm run dev` serves the app; `npx prisma migrate dev` succeeds.
 
 ### U2. Domain schema and seat-integrity constraints
@@ -341,7 +343,7 @@ U1 → U2 → U3 establish schema and catalog administration. U4 generates trips
 - **Requirements:** R1, R3, R5, R17
 - **Files:** `prisma/schema.prisma`, `prisma/migrations/`, `src/lib/events/record.ts`
 - **Approach:** Model `Route`, `Stop`, `RouteStop` (ordered), `Bus`, `Schedule`, `Trip`, `SeatInventory`, `Booking`, `Ticket`, `TicketEvent`. `SeatInventory` carries `hold_token` (random UUID, set by the KTD2 acquire) as the holder's credential and the `/book/[holdId]` route key. `Booking` carries `passengerName` and nothing else. Add `@@unique([tripId, seatLabel])` on `SeatInventory` and `@@unique([scheduleId, departureDate])` on `Trip` for U4's idempotency. The ticket primary key is the token id, so no separate token column exists. Fares are `Int` minor units. Enum `status` on seat inventory: `available | held | booked`. Add `src/lib/events/record.ts` as the single event writer, callable inside any transaction, plus a trigger rejecting row-level UPDATE and DELETE on `ticket_events` while permitting TRUNCATE for U12's reset.
-- **Test Scenarios:** A second `SeatInventory` row for the same `(trip_id, seat_label)` is rejected; the conditional UPDATE of KTD2 affects one row for an available seat and zero rows for a live held seat; an UPDATE or DELETE on a `ticket_events` row is rejected while TRUNCATE is permitted.
+- **Manual checks:** A second `SeatInventory` row for the same `(trip_id, seat_label)` is rejected; the conditional UPDATE of KTD2 affects one row for an available seat and zero rows for a live held seat; an UPDATE or DELETE on a `ticket_events` row is rejected while TRUNCATE is permitted.
 - **Verification:** Migration applies; constraint tests pass against a real Postgres instance, not a mock.
 
 ### U3. Route, bus, and schedule administration
@@ -350,7 +352,7 @@ U1 → U2 → U3 establish schema and catalog administration. U4 generates trips
 - **Requirements:** R1, R2
 - **Files:** `src/app/admin/routes/page.tsx`, `src/app/admin/buses/page.tsx`, `src/app/admin/schedules/page.tsx`, `src/app/admin/actions.ts`, `src/lib/auth.ts`
 - **Approach:** Server-rendered forms with Server Actions. `src/lib/auth.ts` gates `/admin` behind the role passcode (KTD8) and limits passcode submissions to 10 attempts per IP per 15 minutes. Bus seat layout is captured as row count plus column labels, from which seat labels are derived.
-- **Test Scenarios:** A route with out-of-order stop positions is rejected; a bus with zero rows is rejected; a schedule with no active weekdays is rejected; `/admin` without the passcode redirects; repeated wrong passcode submissions from one client are blocked after the attempt limit.
+- **Manual checks:** A route with out-of-order stop positions is rejected; a bus with zero rows is rejected; a schedule with no active weekdays is rejected; `/admin` without the passcode redirects; repeated wrong passcode submissions from one client are blocked after the attempt limit.
 - **Verification:** Admin can create a route, bus, and schedule end to end.
 
 ### U4. Trip generation
@@ -359,7 +361,7 @@ U1 → U2 → U3 establish schema and catalog administration. U4 generates trips
 - **Requirements:** R2, R3
 - **Files:** `src/lib/trips/generate.ts`, `src/app/admin/schedules/actions.ts`
 - **Approach:** `generateTrips(scheduleId, horizonDays)` expands the schedule's active weekdays across the window and inserts a `Trip` plus one `SeatInventory` row per seat, in one transaction. Generation is idempotent on `(schedule_id, departure_date)` so re-running extends rather than duplicates (KTD7).
-- **Test Scenarios:** A Mon/Wed/Fri schedule over 14 days generates exactly 6 trips; each trip gets seat rows equal to bus capacity; re-running generation adds no duplicates; a seat booked on one date stays available on another (AE8).
+- **Manual checks:** A Mon/Wed/Fri schedule over 14 days generates exactly 6 trips; each trip gets seat rows equal to bus capacity; re-running generation adds no duplicates; a seat booked on one date stays available on another (AE8).
 - **Verification:** Generated trips and their seat inventory are queryable directly.
 
 ### U5. Seat map and hold acquisition
@@ -368,7 +370,7 @@ U1 → U2 → U3 establish schema and catalog administration. U4 generates trips
 - **Requirements:** R5, R6, R7, R17
 - **Files:** `src/app/trips/[tripId]/page.tsx`, `src/components/SeatMap.tsx`, `src/lib/seats/hold.ts`, `src/lib/seats/actions.ts`
 - **Approach:** Implement the conditional UPDATE in KTD2, returning affected-row count. Treat an expired hold as available in both the acquire predicate and the seat-map query (KTD6). The seat map renders from `SeatInventory` joined to the bus layout as a grid of labelled seat buttons with a legend: available outlined, held-by-others greyed, booked filled dark, the passenger's own hold accent-filled, each carrying a distinct icon so state never depends on colour alone. Held and booked seats are disabled. The map re-fetches while open, and a lost race shows an inline message naming the seat, refreshes, and clears the selection. The hold's remaining time is returned to the client and shown as a persistent countdown banner on both the seat-map and booking pages, warning under 60 seconds via `aria-live`. At zero the pay action is disabled and an expired panel offers a single route back to the seat map.
-- **Test Scenarios:** Two concurrent holds on the same seat — exactly one succeeds (AE2); a held seat shows unavailable to a second passenger (AE2); a seat whose hold expired is acquirable again; every seat state is distinguishable without colour; losing a race shows the inline message and refreshes the map; the countdown reflects server-returned expiry, not client clock; holding a seat on a trip with no availability fails cleanly.
+- **Manual checks:** Two concurrent holds on the same seat — exactly one succeeds (AE2); a held seat shows unavailable to a second passenger (AE2); a seat whose hold expired is acquirable again; every seat state is distinguishable without colour; losing a race shows the inline message and refreshes the map; the countdown reflects server-returned expiry, not client clock; holding a seat on a trip with no availability fails cleanly.
 - **Verification:** A concurrency test issuing parallel hold requests for one seat yields exactly one success.
 
 ### U6. Trip search
@@ -377,7 +379,7 @@ U1 → U2 → U3 establish schema and catalog administration. U4 generates trips
 - **Requirements:** R4
 - **Files:** `src/app/page.tsx`, `src/app/trips/page.tsx`, `src/lib/trips/search.ts`
 - **Approach:** Query trips whose route contains origin and destination in ascending stop order on the given date. Availability counts seats that are `available` or have an expired hold (KTD6).
-- **Test Scenarios:** Reversed origin/destination on a one-way route returns no results; a fully booked trip shows zero available; a trip with only expired holds shows full availability; a past date returns no results.
+- **Manual checks:** Reversed origin/destination on a one-way route returns no results; a fully booked trip shows zero available; a trip with only expired holds shows full availability; a past date returns no results.
 - **Verification:** Search returns trips generated in U4 with correct counts.
 
 ### U7. Payment and booking confirmation
@@ -386,7 +388,7 @@ U1 → U2 → U3 establish schema and catalog administration. U4 generates trips
 - **Requirements:** R8, R9, R10, R11, R17, R21
 - **Files:** `src/lib/payments/provider.ts`, `src/lib/payments/simulated.ts`, `src/lib/bookings/confirm.ts`, `src/app/book/[holdId]/page.tsx`
 - **Approach:** Define the `PaymentProvider` interface and the simulated implementation (KTD5). `confirmBooking` requires the `hold_token` and refuses an expired hold outright rather than re-acquiring it, so a lapse is always a restart and never a charge against a seat search has re-offered. It calls the provider, and on success transitions the seat to `booked`, creates `Booking` and `Ticket`, and writes `paid` and `issued` events — all in one transaction (KTD9). On failure it releases the hold. The booking reference is at least 10 characters of Crockford base32 from a CSPRNG, not a sequence, since it is the sole credential for cancellation.
-- **Test Scenarios:** Successful payment issues exactly one ticket and one `issued` event; forced failure releases the seat and issues no ticket (AE6); payment attempted on an expired hold fails before charging (AE1); a provider exception leaves no partial booking; two confirmations of the same hold produce one booking.
+- **Manual checks:** Successful payment issues exactly one ticket and one `issued` event; forced failure releases the seat and issues no ticket (AE6); payment attempted on an expired hold fails before charging (AE1); a provider exception leaves no partial booking; two confirmations of the same hold produce one booking.
 - **Verification:** Booking completes; a Booking row, a Ticket row, and a booking reference exist and resolve through a lookup function. Page-level retrieval is verified in U8.
 
 ### U8. QR issue and conductor scanner
@@ -395,7 +397,7 @@ U1 → U2 → U3 establish schema and catalog administration. U4 generates trips
 - **Requirements:** R12, R13, R14, R15, R16, R17
 - **Files:** `src/lib/tickets/token.ts`, `src/lib/auth.ts`, `src/app/ticket/[ref]/page.tsx`, `src/app/scan/page.tsx`, `src/components/Scanner.tsx`, `src/lib/tickets/validate.ts`
 - **Approach:** `/scan` and the `validateTicket` server function are gated behind the conductor role passcode from KTD8, extending the `src/lib/auth.ts` gate built in U3. `token.ts` mints and verifies the HMAC token (KTD3), reading the signing secret from the environment and throwing at startup if it is unset or shorter than 32 bytes. Digest comparison uses `crypto.timingSafeEqual` over equal-length buffers, not string equality. The passenger ticket page renders the QR client-side from a server-generated token, so the same token can later be rendered to an image for delivery over another channel. The scanner starts with a trip-selection step held in the session and keeps the selected trip in a persistent header with a change control, so a misselection is visible without reading a rejection. It mounts a decoder (see Risks) behind a thin component boundary and posts the token with that trip id to `validateTicket`. The verdict is full-bleed and three-state, each distinguishable in greyscale: pass is green with a check and `VALID`, fail is red with a cross and `REJECTED`, unverifiable is amber with a question mark and `COULD NOT VERIFY`. A rejection names the reason in large type with detail beneath, and a wrong-trip rejection names both the ticket's trip and the scanner's selected trip. Decoding pauses when a token is posted and the verdict holds until the conductor taps `Scan next`, so one physical scan yields one verdict. Validation is the single conditional UPDATE in KTD4, writing a `validated` event in the same transaction. A fetch failure renders an explicit unverifiable state, never a verdict (R15).
-- **Test Scenarios:** `/scan` without the conductor passcode redirects, and `validateTicket` called without a conductor session is refused; token minting fails loudly when the secret env var is unset rather than signing with an empty key; valid unused ticket on the correct trip passes once; the same QR scanned again fails naming the prior validation time (AE3); a ticket for another trip fails naming the mismatch (AE4); a tampered signature is rejected before any ticket state is consulted and no ticket transitions to `used`; rejecting the `validateTicket` fetch at the component boundary renders the unverifiable state with neither a pass nor a fail (AE5); denied camera permission renders browser-specific re-enable steps with a retry control; a wrong-trip rejection names both trips; one physical scan produces one validate call and one verdict despite repeated decoded frames; all three verdict states are distinguishable in greyscale; two simultaneous scans of one QR yield exactly one pass.
+- **Manual checks:** `/scan` without the conductor passcode redirects, and `validateTicket` called without a conductor session is refused; token minting fails loudly when the secret env var is unset rather than signing with an empty key; valid unused ticket on the correct trip passes once; the same QR scanned again fails naming the prior validation time (AE3); a ticket for another trip fails naming the mismatch (AE4); a tampered signature is rejected before any ticket state is consulted and no ticket transitions to `used`; rejecting the `validateTicket` fetch at the component boundary renders the unverifiable state with neither a pass nor a fail (AE5); denied camera permission renders browser-specific re-enable steps with a retry control; a wrong-trip rejection names both trips; one physical scan produces one validate call and one verdict despite repeated decoded frames; all three verdict states are distinguishable in greyscale; two simultaneous scans of one QR yield exactly one pass.
 - **Verification:** A concurrency test on one token yields exactly one `used` transition.
 
 ### U9. Event log integrity verification
@@ -404,7 +406,7 @@ U1 → U2 → U3 establish schema and catalog administration. U4 generates trips
 - **Requirements:** R17
 - **Files:** `src/lib/events/occupancy.ts`, test files
 - **Approach:** No new write paths. `record.ts` and the immutability trigger land in U2; U5, U7, U8, and U10 write through them. This unit adds the occupancy derivation and the end-to-end integrity tests that prove the log can stand alone as the crowd product's input (KTD9).
-- **Test Scenarios:** A full lifecycle run produces exactly one event per transition for held, paid, issued, validated, cancelled, and expired; a rolled-back booking writes no event; the count of `validated` events for a trip equals its validated-ticket count; segment occupancy derived from events alone matches the manifest.
+- **Manual checks:** A full lifecycle run produces exactly one event per transition for held, paid, issued, validated, cancelled, and expired; a rolled-back booking writes no event; the count of `validated` events for a trip equals its validated-ticket count; segment occupancy derived from events alone matches the manifest.
 - **Verification:** Per-segment occupancy computed from events alone matches the trip manifest.
 
 ### U10. Cancellation
@@ -413,7 +415,7 @@ U1 → U2 → U3 establish schema and catalog administration. U4 generates trips
 - **Requirements:** R19, R22
 - **Files:** `src/app/booking/[ref]/page.tsx`, `src/app/find/page.tsx`, `src/lib/bookings/cancel.ts`
 - **Approach:** A `Find my booking` form at `/find` takes a reference and routes to `/booking/[ref]`, which shows trip, seat, departure, status, the QR while the ticket is issued, and the cancel action, replacing the QR with a used or cancelled panel otherwise. Cancellation looks up by reference, confirms the ticket is `issued` and unused, then transition seat to `available` and ticket to `cancelled`, writing a `cancelled` event in one transaction.
-- **Test Scenarios:** Cancelling an unused booking frees the seat and invalidates the QR (AE7); cancelling an already-validated booking is refused; cancelling twice is idempotent and writes one event; an unknown reference returns not-found without leaking whether it existed; repeated lookups of unknown references from one client are throttled.
+- **Manual checks:** Cancelling an unused booking frees the seat and invalidates the QR (AE7); cancelling an already-validated booking is refused; cancelling twice is idempotent and writes one event; an unknown reference returns not-found without leaking whether it existed; repeated lookups of unknown references from one client are throttled.
 - **Verification:** A cancelled ticket fails validation and its seat is re-bookable.
 
 ### U11. Trip manifest
@@ -422,7 +424,7 @@ U1 → U2 → U3 establish schema and catalog administration. U4 generates trips
 - **Requirements:** R18
 - **Files:** `src/app/admin/trips/[tripId]/page.tsx`, `src/lib/trips/manifest.ts`
 - **Approach:** Aggregate from `Ticket` and `TicketEvent`. Unboarded is sold minus validated.
-- **Test Scenarios:** Counts match after a mixed sequence of bookings, validations, and cancellations; a trip with no bookings shows zeros; cancelled bookings are excluded from sold.
+- **Manual checks:** Counts match after a mixed sequence of bookings, validations, and cancellations; a trip with no bookings shows zeros; cancelled bookings are excluded from sold.
 - **Verification:** Manifest totals reconcile with the event log (U9).
 
 ### U12. Demo reset and seed data
@@ -431,7 +433,7 @@ U1 → U2 → U3 establish schema and catalog administration. U4 generates trips
 - **Requirements:** R20
 - **Files:** `prisma/seed.ts`, `src/app/admin/reset/page.tsx`, `src/lib/admin/reset.ts`
 - **Approach:** Seed two routes, buses, and schedules, then generate trips. Reset truncates bookings, tickets, and events — the sole sanctioned bulk clear, permitted because the U2 trigger blocks row-level UPDATE and DELETE only — and restores all seat inventory to `available`, behind a typed confirmation (see Risks).
-- **Test Scenarios:** Reset restores every trip to full availability; reset clears bookings, tickets, and events; routes, buses, and schedules survive reset; reset without confirmation does nothing; seed is idempotent.
+- **Manual checks:** Reset restores every trip to full availability; reset clears bookings, tickets, and events; routes, buses, and schedules survive reset; reset without confirmation does nothing; seed is idempotent.
 - **Verification:** After reset, every generated trip shows full availability and the event log is empty.
 
 ---
@@ -441,27 +443,24 @@ U1 → U2 → U3 establish schema and catalog administration. U4 generates trips
 **Commands** (established by U1; no prior convention exists):
 
 - `npm run dev` — serve the app locally
-- `npm test` — run the unit and integration suite
-- `npm run test:concurrency` — run the parallel-request tests for U5 and U8
+- `npm run test:concurrency` — run the two release gates
 - `npx prisma migrate dev` — apply migrations
 - `npm run lint` and `npx tsc --noEmit` — lint and typecheck
 
 **Gates:**
 
-- Integration tests run against a real Postgres instance from `docker-compose.yml`. Seat-integrity and ticket-replay behavior depend on database constraints and transaction semantics, so a mocked or in-memory database does not prove them.
-- The two concurrency properties are release gates: parallel holds on one seat yield exactly one success (U5), and parallel scans of one token yield exactly one pass (U8). Both tests must issue their parallel requests over distinct database connections and assert that exactly one of N attempts succeeded and N-1 reported the seat or ticket unavailable, so a connection pool that serializes requests cannot produce a passing result.
-- Every acceptance example AE1 through AE8 has a corresponding automated test.
+- **No unit test suite.** Per-unit test scenarios in the Implementation Units below are manual verification steps, exercised by using the app, not automated tests. (session-settled: user-directed — chosen over per-unit automated coverage: a prototype is verified by demonstrating it, and clicking through is faster than maintaining a suite.)
+- **The two concurrency gates are automated and are release blockers.** Parallel holds on one seat yield exactly one success (U5); parallel scans of one token yield exactly one pass (U8). Both must issue their parallel requests over distinct database connections and assert that exactly one of N attempts succeeded and N-1 reported the seat or ticket unavailable, so a connection pool that serializes requests cannot produce a passing result. These run against a real Postgres instance from `docker-compose.yml`; a mocked or in-memory database does not prove them.
 - Typecheck and lint pass with no errors.
+- Manual walkthrough covering the acceptance examples: a passenger books and receives a QR, a conductor validates it once and is refused on the second scan, a wrong-trip ticket is refused, a forced payment failure releases the seat, and a cancellation frees it.
 - Manual check on a real phone: the conductor scanner reads a QR and the verdict is legible at arm's length in daylight (R13 cannot be proven by automated test).
-
----
 
 ## Definition of Done
 
 **Global:**
 
 - Every requirement R1 through R22 is implemented and traceable to at least one unit.
-- Every acceptance example AE1 through AE8 passes as an automated test.
+- Every acceptance example AE1 through AE8 is confirmed by manual walkthrough, except the two concurrency properties, which pass as automated gates.
 - Both concurrency gates in the Verification Contract pass.
 - A passenger can complete search through QR ticket, and a conductor can validate it, without developer intervention.
 - Per-trip occupancy is computable from `ticket_events` alone, with no additional instrumentation.
@@ -469,7 +468,7 @@ U1 → U2 → U3 establish schema and catalog administration. U4 generates trips
 - Abandoned or experimental code from approaches that did not work is removed, not left in the diff.
 - `README.md` documents local setup, the demo passcodes, the ticket signing secret, and how to force a payment failure.
 
-**Per-unit:** each unit's Test Scenarios pass, and its cited requirements behave as the Product Contract states.
+**Per-unit:** each unit's Test Scenarios are confirmed manually, and its cited requirements behave as the Product Contract states.
 
 ---
 
