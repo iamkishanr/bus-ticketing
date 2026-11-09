@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { generateTrips } from "../src/lib/trips/generate";
+import { newReference } from "../src/lib/bookings/reference";
 
 const prisma = new PrismaClient();
 
@@ -86,6 +87,174 @@ async function route(
   });
 }
 
+/**
+ * Demo boarding history. Without it the crowd forecast and the occupancy
+ * monitor are empty on a fresh install and look broken. Every booking created
+ * here is named "Demo passenger" and carries a `sim_seed` payment reference, so
+ * seeded traffic is always distinguishable from real bookings.
+ */
+async function backfillHistory(days: number) {
+  const schedules = await prisma.schedule.findMany({
+    include: { route: { include: { routeStops: { orderBy: { position: "asc" } } } }, bus: true },
+  });
+
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 12);
+  let trips = 0;
+  let boardings = 0;
+
+  for (let back = days; back >= 1; back--) {
+    const day = new Date(todayUtc - back * 86400000);
+    const weekend = day.getUTCDay() === 0 || day.getUTCDay() === 6;
+
+    for (const sch of schedules) {
+      if (!sch.weekdays.includes(day.getUTCDay())) continue;
+
+      const trip = await prisma.trip.upsert({
+        where: { scheduleId_departureDate: { scheduleId: sch.id, departureDate: day } },
+        update: {},
+        create: { scheduleId: sch.id, departureDate: day, departureTime: sch.departureTime },
+      });
+      trips++;
+
+      const hour = Number(sch.departureTime.slice(0, 2));
+      const peak = (hour >= 7 && hour <= 10) || (hour >= 17 && hour <= 20);
+      let load = weekend ? 0.45 : peak ? 0.9 : 0.65;
+      load = Math.min(0.99, Math.max(0.1, load + (Math.random() - 0.5) * 0.18));
+
+      const capacity = sch.bus.rows * sch.bus.columns.length;
+      const riders = Math.round(capacity * load);
+      const stops = sch.route.routeStops;
+
+      const bookings = [];
+      const events = [];
+      for (let i = 0; i < riders; i++) {
+        const row = Math.floor(i / sch.bus.columns.length) + 1;
+        const seatLabel = `${row}${sch.bus.columns[i % sch.bus.columns.length]}`;
+        // Most ride the whole corridor; some ride a segment of it.
+        const oIdx = Math.random() < 0.7 ? 0 : Math.floor(Math.random() * (stops.length - 1));
+        const dIdx =
+          Math.random() < 0.7
+            ? stops.length - 1
+            : oIdx + 1 + Math.floor(Math.random() * (stops.length - 1 - oIdx));
+
+        const boardedAt = new Date(day);
+        boardedAt.setUTCHours(hour, Number(sch.departureTime.slice(3, 5)) + Math.floor(Math.random() * 8));
+
+        bookings.push({
+          reference: newReference(),
+          tripId: trip.id,
+          seatLabel,
+          passengerName: "Demo passenger",
+          originStopId: stops[oIdx].stopId,
+          destinationStopId: stops[dIdx].stopId,
+          fareMinor: sch.route.fareMinor,
+          paymentProviderRef: "sim_seed",
+          boardedAt,
+        });
+      }
+
+      for (const bk of bookings) {
+        const { boardedAt, ...data } = bk;
+        const booking = await prisma.booking.create({ data });
+        const ticket = await prisma.ticket.create({
+          data: { bookingId: booking.id, tripId: trip.id, status: "used", validatedAt: boardedAt },
+        });
+        events.push({
+          ticketId: ticket.id,
+          tripId: trip.id,
+          seatLabel: bk.seatLabel,
+          originStopId: bk.originStopId,
+          destinationStopId: bk.destinationStopId,
+          eventType: "validated" as const,
+          occurredAt: boardedAt,
+        });
+        boardings++;
+      }
+      if (events.length) await prisma.ticketEvent.createMany({ data: events });
+    }
+  }
+  return { trips, boardings };
+}
+
+/**
+ * Partially fill upcoming trips, so a seat map matches the occupancy the crowd
+ * forecast predicts. Without this a service shows "about 90% full" while every
+ * seat on it is free, which reads as a bug.
+ *
+ * These are live bookings, not history: the ticket stays `issued` so the seat
+ * is genuinely taken and a conductor could scan it.
+ */
+async function fillUpcomingTrips(days: number) {
+  const now = new Date();
+  const todayUtc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 12));
+  const horizon = new Date(todayUtc.getTime() + days * 86400000);
+
+  const trips = await prisma.trip.findMany({
+    where: { departureDate: { gte: todayUtc, lte: horizon } },
+    include: {
+      schedule: { include: { route: { include: { routeStops: { orderBy: { position: "asc" } } } }, bus: true } },
+      seats: { orderBy: { seatLabel: "asc" } },
+    },
+  });
+
+  let filled = 0;
+  for (const trip of trips) {
+    const hour = Number(trip.departureTime.slice(0, 2));
+    const weekend = trip.departureDate.getUTCDay() === 0 || trip.departureDate.getUTCDay() === 6;
+    const peak = (hour >= 7 && hour <= 10) || (hour >= 17 && hour <= 20);
+
+    // Leave real headroom so a demo can always book a seat.
+    let load = weekend ? 0.35 : peak ? 0.7 : 0.45;
+    load = Math.min(0.8, Math.max(0.05, load + (Math.random() - 0.5) * 0.2));
+
+    const stops = trip.schedule.route.routeStops;
+    const take = Math.round(trip.seats.length * load);
+    // Scatter the taken seats instead of filling front to back.
+    const chosen = [...trip.seats].sort(() => Math.random() - 0.5).slice(0, take);
+
+    for (const seat of chosen) {
+      const oIdx = Math.random() < 0.7 ? 0 : Math.floor(Math.random() * (stops.length - 1));
+      const dIdx =
+        Math.random() < 0.7
+          ? stops.length - 1
+          : oIdx + 1 + Math.floor(Math.random() * (stops.length - 1 - oIdx));
+
+      const booking = await prisma.booking.create({
+        data: {
+          reference: newReference(),
+          tripId: trip.id,
+          seatLabel: seat.seatLabel,
+          passengerName: "Demo passenger",
+          originStopId: stops[oIdx].stopId,
+          destinationStopId: stops[dIdx].stopId,
+          fareMinor: trip.schedule.route.fareMinor,
+          paymentProviderRef: "sim_seed",
+        },
+      });
+      const ticket = await prisma.ticket.create({
+        data: { bookingId: booking.id, tripId: trip.id },
+      });
+      await prisma.seatInventory.update({
+        where: { id: seat.id },
+        data: { status: "booked", holdToken: null, holdExpiresAt: null },
+      });
+      await prisma.ticketEvent.createMany({
+        data: (["paid", "issued"] as const).map((eventType) => ({
+          ticketId: ticket.id,
+          tripId: trip.id,
+          seatLabel: seat.seatLabel,
+          originStopId: stops[oIdx].stopId,
+          destinationStopId: stops[dIdx].stopId,
+          eventType,
+        })),
+      });
+      filled++;
+    }
+  }
+  return { trips: trips.length, seats: filled };
+}
+
 async function main() {
   const allNames = Array.from(new Set([
     ...WHITEFIELD_CORRIDOR, ...TUMKUR_ROAD_CORRIDOR, ...HOSUR_ROAD_CORRIDOR,
@@ -155,6 +324,18 @@ async function main() {
   for (const s of schedules) total += await generateTrips(s.id, 14);
   const routeCount = await prisma.route.count();
   console.log(`Seeded ${allNames.length} stops, ${routeCount} routes, ${schedules.length} services. Generated ${total} trips.`);
+
+  // Demo history, unless explicitly skipped.
+  if (process.env.SEED_HISTORY === "false") {
+    console.log("Skipped boarding history (SEED_HISTORY=false).");
+  } else if ((await prisma.ticketEvent.count()) > 0) {
+    console.log("Boarding history already present; left untouched.");
+  } else {
+    const h = await backfillHistory(21);
+    console.log(`Backfilled ${h.trips} past trips and ${h.boardings} demo boardings.`);
+    const f = await fillUpcomingTrips(7);
+    console.log(`Pre-booked ${f.seats} seats across ${f.trips} upcoming trips.`);
+  }
 }
 
 main().finally(() => prisma.$disconnect());

@@ -48,14 +48,20 @@ npm run dev                          # http://localhost:3000
 | Routes | 6 corridors (Whitefield, Tumkur Road, Hosur Road, Airport, Outer Ring, South) |
 | Services | 12, from 05:30 to 21:30 |
 | Trips | ~148, starting **today** through 14 days ahead |
-| Bookings / boarding history | none — every seat is free |
+| Boarding history | 21 days, ~4,900 demo boardings, so the crowd forecast and occupancy monitor have data |
+| Upcoming bookings | ~1,500 seats pre-booked over 7 days (39–80% per trip), so seat maps match the forecast |
 
 The landing page lists today's departures without searching, so a demo needs no
-setup. Crowd forecasts and the operator monitor stay empty until passengers
-start boarding — they are computed from real scans, never seeded.
+setup, and every screen has data on first run.
+
+Every seeded booking is named `Demo passenger` with a `sim_seed` payment
+reference, so demo traffic is always distinguishable from real bookings. The
+occupancy monitor says how many of its figures are seeded. Every trip keeps
+seats free, so a demo can always book one.
 
 Re-running the seed is safe: it extends the trip window rather than duplicating
-routes.
+routes, and skips history if any already exists. Set `SEED_HISTORY=false` to
+seed the network only, or clear demo traffic with **Reset demo data**.
 
 ## Screens, by who uses them
 
