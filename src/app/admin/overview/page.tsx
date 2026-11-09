@@ -1,0 +1,181 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { hasRole } from "@/lib/auth";
+import Mast from "@/components/Mast";
+import { serviceOverview, totals, topSegments } from "@/lib/crowd/overview";
+import { CROWD_COPY } from "@/lib/crowd/estimate";
+
+export const dynamic = "force-dynamic";
+
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+export default async function OverviewPage() {
+  if (!hasRole("admin")) redirect("/admin");
+
+  const services = await serviceOverview();
+  const t = await totals(services);
+  const segments = await topSegments();
+
+  if (services.length === 0) {
+    return (
+      <main className="shell shell--wide">
+        <Mast label="Monitor" />
+        <h1>Nothing to monitor yet</h1>
+        <p className="lede">
+          Occupancy appears here once passengers start boarding. Every validated scan
+          feeds this page — no separate tracking is needed.
+        </p>
+        <div className="footlinks">
+          <Link href="/admin">Back to operator</Link>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="shell shell--wide">
+      <Mast label="Monitor" />
+      <h1>How full are the buses?</h1>
+      <p className="lede">
+        Every figure here is counted from validated boarding scans — the same scans the
+        conductor makes at the door.
+      </p>
+
+      <div className="card">
+        <div className="stats">
+          <div>
+            <div className="stat__n">{t.boardings.toLocaleString("en-IN")}</div>
+            <div className="stat__k">Passengers boarded</div>
+          </div>
+          <div>
+            <div className="stat__n">{t.tripsRun}</div>
+            <div className="stat__k">Trips run</div>
+          </div>
+          <div>
+            <div className="stat__n">{t.avgPct}%</div>
+            <div className="stat__k">Average occupancy</div>
+          </div>
+          <div>
+            <div className="stat__n">{t.servicesTracked}</div>
+            <div className="stat__k">Services tracked</div>
+          </div>
+        </div>
+      </div>
+
+      <h2>Occupancy by service</h2>
+      <div className="card">
+        <div className="scroller">
+          <table>
+            <thead>
+              <tr>
+                <th>Departs</th>
+                <th>Route</th>
+                <th>Trips</th>
+                <th>Avg riders</th>
+                <th>Average load</th>
+                <th>Peak</th>
+              </tr>
+            </thead>
+            <tbody>
+              {services.map((s) => (
+                <tr key={s.scheduleId}>
+                  <td className="mono">{s.departureTime}</td>
+                  <td className="wrap">
+                    {s.routeName}
+                    <div className="muted">{s.busLabel}</div>
+                  </td>
+                  <td className="mono">{s.tripsRun}</td>
+                  <td className="mono">{s.avgBoarded} / {s.capacity}</td>
+                  <td>
+                    <div className="loadbar" title={`${s.avgPct}% average`}>
+                      <div className={`loadbar__fill loadbar__fill--${s.level}`} style={{ width: `${s.avgPct}%` }} />
+                      <span className="loadbar__pct mono">{s.avgPct}%</span>
+                    </div>
+                    <div className={`muted crowd--${s.level}`} style={{ fontSize: "0.76rem" }}>
+                      {CROWD_COPY[s.level]}
+                    </div>
+                  </td>
+                  <td className="mono">{s.peakPct}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>Load by day of week</h2>
+      <div className="card">
+        <p className="muted" style={{ marginTop: 0 }}>
+          Average occupancy per service. Darker means fuller.
+        </p>
+        <div className="scroller">
+          <table className="heat">
+            <thead>
+              <tr>
+                <th>Service</th>
+                {DAYS.map((d) => <th key={d} style={{ textAlign: "center" }}>{d}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {services.map((s) => (
+                <tr key={s.scheduleId}>
+                  <td className="wrap">
+                    <span className="mono">{s.departureTime}</span>{" "}
+                    <span className="muted">{s.routeName.replace(/ —.*/, "")}</span>
+                  </td>
+                  {s.byWeekday.map((w) => (
+                    <td key={w.weekday} className="heat__cell">
+                      {w.pct === null ? (
+                        <span className="heat__none" title="Does not run">·</span>
+                      ) : (
+                        <span
+                          className="heat__box mono"
+                          style={{ background: `color-mix(in srgb, var(--accent) ${Math.max(8, w.pct)}%, var(--surface))`,
+                                   color: w.pct > 55 ? "#fff" : "var(--ink)" }}
+                          title={`${w.pct}% full`}
+                        >
+                          {w.pct}
+                        </span>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {segments.length > 0 && (
+        <>
+          <h2>Busiest segments</h2>
+          <div className="card">
+            <div className="scroller">
+              <table>
+                <thead><tr><th>From</th><th>To</th><th>Passengers</th></tr></thead>
+                <tbody>
+                  {segments.map((sg, i) => (
+                    <tr key={i}>
+                      <td className="wrap">{sg.origin}</td>
+                      <td className="wrap">{sg.destination}</td>
+                      <td className="mono">{Number(sg.riders).toLocaleString("en-IN")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="muted" style={{ marginBottom: 0 }}>
+              Boarding and alighting stops come from each booking, so this counts intended
+              journeys rather than verified exits.
+            </p>
+          </div>
+        </>
+      )}
+
+      <div className="footlinks">
+        <Link href="/admin">Services and trips</Link>
+        <Link href="/">Passenger site</Link>
+      </div>
+    </main>
+  );
+}

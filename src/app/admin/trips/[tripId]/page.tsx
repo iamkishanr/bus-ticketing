@@ -48,6 +48,7 @@ export default async function ManifestPage({ params }: { params: { tripId: strin
 
       <div className="footlinks">
         <Link href="/admin">Back to operator</Link>
+        <Link href="/admin/overview">Monitor occupancy</Link>
       </div>
     </main>
   );

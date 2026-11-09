@@ -339,3 +339,26 @@ td.wrap { white-space: normal; }
 .crowd--seats .crowd__bars i:nth-child(-n+2) { opacity: 1; }
 .crowd--full { color: var(--fail); }
 .crowd--full .crowd__bars i { opacity: 1; }
+
+/* ---- Operator monitor ---- */
+.loadbar {
+  position: relative; height: 22px; min-width: 130px;
+  background: var(--paper); border: 1px solid var(--rule);
+  border-radius: 4px; overflow: hidden;
+}
+.loadbar__fill { position: absolute; inset: 0 auto 0 0; }
+.loadbar__fill--quiet { background: color-mix(in srgb, var(--pass) 55%, var(--surface)); }
+.loadbar__fill--seats { background: color-mix(in srgb, var(--unknown) 55%, var(--surface)); }
+.loadbar__fill--full  { background: color-mix(in srgb, var(--fail) 55%, var(--surface)); }
+.loadbar__pct {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 0.74rem; font-weight: 600; color: var(--ink);
+}
+.heat th, .heat td { padding: 7px 6px; }
+.heat__cell { text-align: center; }
+.heat__box {
+  display: inline-block; min-width: 34px; padding: 4px 0;
+  border-radius: 4px; font-size: 0.74rem; font-weight: 600;
+  border: 1px solid var(--rule);
+}
+.heat__none { color: var(--rule-firm); }
